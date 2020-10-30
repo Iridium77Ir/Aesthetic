@@ -1,8 +1,3 @@
-// the frame rate
-var fps = 60;
-// the canvas capturer instance
-var capturer = new CCapture({ format: 'png', framerate: fps });
-
 var canwidth = window.innerWidth;
 var canheight = window.innerHeight;
 
@@ -11,28 +6,22 @@ var cur = 0;
 var step = 0.1;
 
 var radius = 1;
-var objcolor = 'rgba(0,0,0,0.03)';
 
-var color1 = 'hsla(';
-var color2 = ', 59%, 32%, 0.03)';
-
-var space = 20;
+var space = 10;
+var margin = 0;
 
 var row = Math.floor(canwidth/space);
 var col = Math.floor(canheight/space);
 
 var vectorlist = [];
 
-var particlenum = 50;
-var particlegone = 0;
+var particlenum = 100;
 var particlelist = [];
-
-var linelist = [];
 
 var heightvar = space;
 
 var friction = 0.6;
-var influence = 15;
+var influence = 20;
 var accoeff = 10;
 
 function easymap(n, start1, stop1, start2, stop2) {
@@ -40,9 +29,6 @@ function easymap(n, start1, stop1, start2, stop2) {
 }
 
 function Particle(x, y) {
-
-    /* this.x = x*space+11;
-    this.y = y*space+11; */
     this.x = space*(row-1);
     this.y = 300 + Math.round(y/1000)*400;
 
@@ -55,75 +41,69 @@ function Particle(x, y) {
     this.accx = 0;
     this.accy = 0;
 
-    this.friction = friction + Math.random()*0.1;
-    this.influence = influence + Math.random()*0.5;
-    this.accoeff = accoeff + Math.random()*5;
+    this.friction = friction + Math.random()*0.05;
+    this.influence = influence + Math.random()*0.1;
+    this.accoeff = accoeff + Math.random()*2;
 
-    this.color = color1 + Math.floor(easymap(this.x, 0, space, 0, 360)) + color2;
-
-    this.gone = false;
+    this.color = Math.floor(easymap(this.x, 0, space+margin, 0, 360));
 }
 
 function Vector(x, y) {
+    this.origx = x;
+    this.origy = y;
 
-    this.x = x*space;
-    this.y = y*space;
+    this.x = x*space+margin;
+    this.y = y*space+margin;
 
     this.angle = 0;
 }
 
 Particle.prototype.drawParticle = function() {
-    if(this.x > 10 && this.x < space*row && this.y > 10 && this.y < space*col) {
-            angle = vectorlist[Math.floor(this.x/space)][Math.floor(this.y/space)].angle,
-            this.accy = Math.sin(angle) * this.influence;
-            this.accx = Math.cos(angle) * this.accoeff;
+    angle = vectorlist[Math.floor(constrain(this.x, 0, canwidth-10)/space-margin)][Math.floor(constrain(this.y, 0, canheight-10)/space-margin)].angle,
+    this.accy = Math.sin(angle) * this.influence;
+    this.accx = Math.cos(angle) * this.accoeff;
 
-            this.vx += this.accx;
-            this.vy += this.accy;
+    this.vx += this.accx;
+    this.vy += this.accy;
 
-            this.vx *= this.friction;
-            this.vy *= this.friction;
+    this.vx *= this.friction;
+    this.vy *= this.friction;
 
-            this.x += this.vx;
-            this.y += this.vy;
+    this.x += this.vx;
+    this.y += this.vy;
 
-            this.color = color1 + Math.floor(easymap(this.x, 0, canwidth, 0, 360)) + color2;
-            linelist[linelist.length-1].push({x: this.x, y: this.y, xprev: this.prevx, yprev: this.prevy, color: this.color})
+    this.edge();
 
-            this.prevx = this.x;
-            this.prevy = this.y;
-    } else {
-        this.edge(true);
-    }
+    stroke(this.color, 59, 32, 0.03);
+    this.color = Math.floor(easymap(this.x, 0, canwidth+margin, 0, 360));
+
+    line(this.x, this.y, this.prevx, this.prevy);
+
+    this.prevx = this.x;
+    this.prevy = this.y;
 }
 
 Particle.prototype.edge = function() {
-    /* if(this.x <= 11) {
-        this.x = canwidth-20;
+    if(this.x <= 0) {
+        this.x = canwidth+margin-2;
         this.prevx = this.x;
     } else if (this.x >= row*space) {
-        this.x = 12;
+        this.x = 2;
         this.prevx = this.x;
     }
-    if(this.y <= 11) {
-        this.y = canheight-20;
+    if(this.y <= 0) {
+        this.y = canheight+margin-2;
         this.prevy = this.y;
     } else if (this.y >= space*col) {
-        this.y = 12;
+        this.y = 2;
         this.prevy = this.y;
-    } */
-    if(!this.gone) {
-        particlegone += 1;
-        this.gone = true;
     }
-    this.x = 5000;
-    this.prevx = 5000;
-    this.y = 5000;
-    this.prevy = 5000;
 }
 
 Vector.prototype.drawVector = function(noise) {
     this.angle = -1 * noise;
+    
+    //line(this.x, this.y, Math.cos(this.angle)*heightvar+this.x, Math.sin(this.angle)*heightvar+this.y);
 }
 
 for(var i = 0; i < row; i++) {
@@ -138,68 +118,34 @@ for(var i = 0; i < particlenum; i++) {
     for(var j = 0; j < particlenum; j++) {
         particlelist[i].push(new Particle((canwidth/particlenum)*i, (canheight/particlenum)*j));
     }
+}   
+
+function setup() {
+    createCanvas(canwidth, canheight);
+    colorMode(HSL);
+    /* for(var k = 0; k < 10; k++) {
+        for(var i = 0; i < row; i++) {
+            for(var j = 0; j < col; j++) {
+                vectorlist[i][j].drawVector(map(noise(i*step, j*step, cur), 0, 1, 0, Math.PI*2));
+            }
+        }
+    } */
 }
 
-function drawFunc() {
-    background(255);
-    stroke(color(objcolor));
+function draw() {
+    frameRate(60);
+    //background(255);
+    background(0, 100, 100, 0.05);
     cur += inc;
-
-    linelist.push([]);
-    for(var i = 0; i < particlenum; i++) {
-        for(var j = 0; j < particlenum; j++) {
-            particlelist[i][j].drawParticle();
-        }
-    }
-    for(var i = 0; i < linelist.length; i++) {
-        for(var j = 0; j < linelist[i].length; j++) {
-            var curline = linelist[i][j];
-            stroke(color(curline.color));
-            line(curline.x, curline.y, curline.xprev, curline.yprev);
-        }
-    }
-    if(cur > 1) {
-        linelist.shift();
-    }
-    if(linelist[0].length == 0) {
-        linelist.shift();
-    }
 
     for(var i = 0; i < row; i++) {
         for(var j = 0; j < col; j++) {
             vectorlist[i][j].drawVector(map(noise(i*step, j*step, cur), 0, 1, 0, Math.PI*2));
         }
     }
-}
-
-//
-
-function checkforEnd() {
-    if (linelist.length == 0) {
-        noLoop();
-        console.log('finished recording.');
-        capturer.stop();
-        capturer.save();
-        return;
+    for(var i = 0; i < particlenum; i++) {
+        for(var j = 0; j < particlenum; j++) {
+            particlelist[i][j].drawParticle();
+        }
     }
-}
-
-
-function setup() {
-    createCanvas(canwidth, canheight);
-    // this is optional, but lets us see how the animation will look in browser.
-    frameRate(fps);
-    // start the recording
-    capturer.start();
-}
-
-// draw
-function draw() {
-
-    drawFunc();
-
-    checkforEnd();
-
-    // handle saving the frame
-    capturer.capture(document.getElementById('defaultCanvas0'));
 }
